@@ -40,7 +40,7 @@ resource "aws_vpc_security_group_egress_rule" "all" {
 
 
 resource "aws_iam_role" "kafka" {
-  name = "${var.name}-kafka-role"
+  name = "${var.name}-lab-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -58,7 +58,7 @@ resource "aws_iam_role_policy_attachment" "ssm" {
 }
 
 resource "aws_iam_instance_profile" "kafka" {
-  name = "${var.name}-kafka-profile"
+  name = "${var.name}-kafka-lab-profile"
   role = aws_iam_role.kafka.name
 }
 
