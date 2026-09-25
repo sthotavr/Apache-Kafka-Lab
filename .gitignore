@@ -1,0 +1,19 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+README.md
+
+# CDK
+cdk/node_modules/
+cdk/cdk.out/
+cdk/**/*.js
+cdk/**/*.d.ts
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
