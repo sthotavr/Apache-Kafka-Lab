@@ -1,43 +1,38 @@
-data "aws_availability_zones" "available" {
-  state = "available"
-}
-
-resource "aws_vpc" "sri" {
-  cidr_block           = var.vpc_cidr
+resource "aws_vpc" "sri_vpc" {
+  cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
 
-  tags = { Name = "${var.name}-vpc" }
+  tags = { Name = "sri-vpc" }
 }
 
-resource "aws_internet_gateway" "sri" {
-  vpc_id = aws_vpc.sri.id
+resource "aws_internet_gateway" "sri_igw" {
+  vpc_id = aws_vpc.sri_vpc.id
 
-  tags = { Name = "${var.name}-igw" }
+  tags = { Name = "sri-igw" }
 }
 
-
-resource "aws_subnet" "satya" {
-  vpc_id                  = aws_vpc.sri.id
-  availability_zone       = data.aws_availability_zones.available.names[0]
-  cidr_block              = cidrsubnet(var.vpc_cidr, 2, 0)
+resource "aws_subnet" "sri_public_subnet" {
+  vpc_id                  = aws_vpc.sri_vpc.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "us-east-2a"
   map_public_ip_on_launch = true
 
-  tags = { Name = "${var.name}-satya" }
+  tags = { Name = "sri-public-subnet" }
 }
 
-resource "aws_route_table" "satya" {
-  vpc_id = aws_vpc.sri.id
+resource "aws_route_table" "sri_public_rt" {
+  vpc_id = aws_vpc.sri_vpc.id
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.sri.id
+    gateway_id = aws_internet_gateway.sri_igw.id
   }
 
-  tags = { Name = "${var.name}-satya" }
+  tags = { Name = "sri-public-rt" }
 }
 
-resource "aws_route_table_association" "satya" {
-  subnet_id      = aws_subnet.satya.id
-  route_table_id = aws_route_table.satya.id
+resource "aws_route_table_association" "sri_public_rt_assoc" {
+  subnet_id      = aws_subnet.sri_public_subnet.id
+  route_table_id = aws_route_table.sri_public_rt.id
 }

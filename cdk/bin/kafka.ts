@@ -1,17 +1,11 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
-import { KafkaClusterStack } from '../lib/kafka-cluster-stack';
+import { SriKafkaStack } from '../lib/kafka-cluster-stack';
+import { SriSecurityControlsStack } from '../lib/security-controls-stack';
 
 const app = new cdk.App();
 
-new KafkaClusterStack(app, 'KafkaCdkStack', {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: 'us-east-2',
-  },
-  kafkaVersion: app.node.getContext('kafkaVersion'),
-  instanceType: app.node.getContext('instanceType'),
-  heapSize: app.node.getContext('heapSize'),
-  volumeSizeGb: Number(app.node.getContext('volumeSizeGb')),
-  clientCidrs: app.node.getContext('clientCidrs'),
-});
+const env = { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'us-east-2' };
+
+new SriKafkaStack(app, 'SriKafkaStack', { env });
+new SriSecurityControlsStack(app, 'SriSecurityControlsStack', { env });

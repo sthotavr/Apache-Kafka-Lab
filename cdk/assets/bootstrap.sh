@@ -1,83 +1,40 @@
 #!/bin/bash
-# Installs and starts a single-node Apache Kafka cluster in KRaft mode (broker + controller on one host).
-# Placeholders (__NAME__) are replaced by the CDK stack before the script is used as user data.
-set -euxo pipefail
+set -e
 
-KAFKA_VERSION="__KAFKA_VERSION__"
-SCALA_VERSION="2.13"
-CLUSTER_ID="__CLUSTER_ID__"
-HEAP_SIZE="__HEAP_SIZE__"
+dnf install -y java-21-amazon-corretto-headless jq
+curl -fsSL https://archive.apache.org/dist/kafka/4.3.1/kafka_2.13-4.3.1.tgz | tar -xz -C /opt
+mv /opt/kafka_2.13-4.3.1 /opt/kafka
 
-KAFKA_DIST="kafka_$SCALA_VERSION-$KAFKA_VERSION"
+IP=$(hostname -I | awk '{print $1}')
+SECRET=$(aws secretsmanager get-secret-value --region us-east-2 --secret-id "__SECRET_ARN__" --query SecretString --output text)
+USERNAME=$(echo "$SECRET" | jq -r .username)
+PASSWORD=$(echo "$SECRET" | jq -r .password)
+JAAS="org.apache.kafka.common.security.scram.ScramLoginModule required username=\"$USERNAME\" password=\"$PASSWORD\";"
 
-
-IMDS_TOKEN=$(curl -fsS -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
-PRIVATE_IP=$(curl -fsS -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4)
-
-
-dnf install -y java-21-amazon-corretto-headless shadow-utils tar gzip
-
-id kafka >/dev/null 2>&1 || useradd --system --no-create-home --shell /sbin/nologin kafka
-
-
-curl -fsSL --retry 5 -o "/tmp/$KAFKA_DIST.tgz" "https://dlcdn.apache.org/kafka/$KAFKA_VERSION/$KAFKA_DIST.tgz" \
-  || curl -fsSL --retry 5 -o "/tmp/$KAFKA_DIST.tgz" "https://archive.apache.org/dist/kafka/$KAFKA_VERSION/$KAFKA_DIST.tgz"
-tar -xzf "/tmp/$KAFKA_DIST.tgz" -C /opt
-rm -f "/tmp/$KAFKA_DIST.tgz"
-ln -sfn "/opt/$KAFKA_DIST" /opt/kafka
-
-mkdir -p /etc/kafka /var/lib/kafka/data /var/log/kafka
-
-
-cat > /etc/kafka/server.properties <<EOF
+cat > /opt/kafka/config/sri-server.properties <<EOF
 process.roles=broker,controller
 node.id=1
 controller.quorum.voters=1@localhost:9093
-
-listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://localhost:9093
-advertised.listeners=PLAINTEXT://$PRIVATE_IP:9092
-listener.security.protocol.map=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+listeners=SASL_PLAINTEXT://0.0.0.0:9092,CONTROLLER://localhost:9093
+advertised.listeners=SASL_PLAINTEXT://$IP:9092
+listener.security.protocol.map=SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT
 controller.listener.names=CONTROLLER
-inter.broker.listener.name=PLAINTEXT
-
-log.dirs=/var/lib/kafka/data
-num.partitions=3
-default.replication.factor=1
-min.insync.replicas=1
+inter.broker.listener.name=SASL_PLAINTEXT
+sasl.enabled.mechanisms=SCRAM-SHA-512
+sasl.mechanism.inter.broker.protocol=SCRAM-SHA-512
+listener.name.sasl_plaintext.scram-sha-512.sasl.jaas.config=$JAAS
+log.dirs=/opt/kafka/data
 offsets.topic.replication.factor=1
-transaction.state.log.replication.factor=1
-transaction.state.log.min.isr=1
-auto.create.topics.enable=false
-log.retention.hours=168
 EOF
 
-/opt/kafka/bin/kafka-storage.sh format --ignore-formatted \
-  --cluster-id "$CLUSTER_ID" \
-  --config /etc/kafka/server.properties
-
-chown -R kafka:kafka "/opt/$KAFKA_DIST" /etc/kafka /var/lib/kafka /var/log/kafka
-
-cat > /etc/systemd/system/kafka.service <<EOF
-[Unit]
-Description=Apache Kafka (KRaft)
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=kafka
-Group=kafka
-Environment="KAFKA_HEAP_OPTS=-Xms$HEAP_SIZE -Xmx$HEAP_SIZE"
-Environment="LOG_DIR=/var/log/kafka"
-ExecStart=/opt/kafka/bin/kafka-server-start.sh /etc/kafka/server.properties
-ExecStop=/opt/kafka/bin/kafka-server-stop.sh
-Restart=on-failure
-RestartSec=10
-LimitNOFILE=100000
-
-[Install]
-WantedBy=multi-user.target
+cat > /opt/kafka/config/sri-client.properties <<EOF
+security.protocol=SASL_PLAINTEXT
+sasl.mechanism=SCRAM-SHA-512
+sasl.jaas.config=$JAAS
 EOF
 
-systemctl daemon-reload
-systemctl enable --now kafka
+/opt/kafka/bin/kafka-storage.sh format -t "$(/opt/kafka/bin/kafka-storage.sh random-uuid)" \
+  -c /opt/kafka/config/sri-server.properties \
+  --add-scram "SCRAM-SHA-512=[name=$USERNAME,password=$PASSWORD]"
+
+/opt/kafka/bin/kafka-server-start.sh -daemon /opt/kafka/config/sri-server.properties
