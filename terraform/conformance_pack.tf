@@ -59,6 +59,6 @@ resource "aws_config_conformance_pack" "sri_conformance_pack" {
   depends_on = [
     aws_lambda_permission.sri_config_invoke,
     aws_iam_role_policy.sri_remediation_policy,
-    aws_config_configuration_recorder_status.sri_config_recorder_status,
+    #aws_config_configuration_recorder_status.sri_config_recorder_status,
   ]
 }

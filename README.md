@@ -8,7 +8,6 @@ Single-node Apache Kafka on EC2 (no MSK) with AWS Config security controls, writ
 | `cdk/` | CDK v2 (TypeScript) |
 | `terraform/` | Terraform (AWS provider 6.x) |
 
-All three create the same resources with the same `sri-*` names, so deploy only one of them at a time. Design notes are in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## What it creates
 
