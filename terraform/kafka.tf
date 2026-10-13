@@ -42,7 +42,7 @@ resource "aws_iam_instance_profile" "sri_kafka_profile" {
 
 resource "aws_instance" "sri_kafka" {
   ami                    = "ami-08be4b1b8afa29958"
-  instance_type          = "c7i-flex.large"
+  instance_type          = "t3.medium"
   subnet_id              = aws_subnet.sri_public_subnet.id
   vpc_security_group_ids = [aws_security_group.sri_kafka_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.sri_kafka_profile.name
