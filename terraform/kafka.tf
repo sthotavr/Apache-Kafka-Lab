@@ -9,8 +9,6 @@ resource "aws_security_group" "sri_kafka_sg" {
     cidr_blocks = [aws_vpc.sri_vpc.cidr_block]
   }
 
-  
-
   egress {
     from_port   = 0
     to_port     = 0
