@@ -20,7 +20,7 @@ resource "aws_codebuild_project" "sri_kafka_deploy" {
     buildspec       = "terraform/buildspec.yml"
   }
 
-  source_version = "devops"
+  source_version = "OPA-Policy"
 
   artifacts {
     type = "NO_ARTIFACTS"
@@ -52,7 +52,7 @@ resource "aws_codebuild_webhook" "sri_kafka_deploy" {
 
     filter {
       type    = "HEAD_REF"
-      pattern = "^refs/heads/devops$"
+      pattern = "^refs/heads/OPA-Policy$"
     }
   }
 }

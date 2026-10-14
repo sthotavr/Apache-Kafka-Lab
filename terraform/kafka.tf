@@ -9,6 +9,7 @@ resource "aws_security_group" "sri_kafka_sg" {
     cidr_blocks = [aws_vpc.sri_vpc.cidr_block]
   }
 
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -47,11 +48,19 @@ resource "aws_instance" "sri_kafka" {
   vpc_security_group_ids = [aws_security_group.sri_kafka_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.sri_kafka_profile.name
 
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
   user_data = templatefile("${path.module}/templates/bootstrap.sh.tftpl", {
     secret_arn = aws_secretsmanager_secret.sri_kafka_secret.arn
   })
 
-  tags = { Name = "sri-kafka" }
+  tags = {
+    Name        = "sri-kafka"
+    Environment = "dev"
+  }
 
   depends_on = [
     aws_route_table_association.sri_public_rt_assoc,
